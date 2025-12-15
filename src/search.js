@@ -12,16 +12,23 @@ module.exports = (req, res) => {
     const normalizedQuery = normalizeText(query);
     const queryEmbedding = generateEmbedding(normalizedQuery);
 
-    const results = getAll()
-                    .map(chunk => ({
-                        text: chunk.text,
-                        candidateId: chunk.candidateId,
-                        embeddingVersion: chunk.embeddingVersion,
-                        score: cosineSimilarity(queryEmbedding, chunk.embedding),
-                    }))
-                    .sort((a,b) => b.score - a.score)
-                    .slice(0, topK);
+    const seen = new Set();
 
-                res.json(results);
+const results = getAll()
+  .map(chunk => ({
+    id: chunk.id,
+    text: chunk.text,
+    candidateId: chunk.candidateId,
+    embeddingVersion: chunk.embeddingVersion,
+    score: cosineSimilarity(queryEmbedding, chunk.embedding),
+  }))
+  .sort((a, b) => b.score - a.score)
+  .filter(result => {
+    const key = result.candidateId + result.text;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  })
+  .slice(0, topK);
 };
 
